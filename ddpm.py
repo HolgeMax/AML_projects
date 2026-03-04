@@ -56,7 +56,7 @@ class DDPM(nn.Module):
         alpha_bar_t = alpha_bar_t.view(x.shape[0], 1)
         
         x_t = torch.sqrt(alpha_bar_t)*x + torch.sqrt(1- alpha_bar_t)*epsilon
-        neg_elbo = ((epsilon - self.network(x_t, t))**2).mean()     
+        neg_elbo = ((epsilon - self.network(x_t, t))**2)     
 
         return neg_elbo
 
@@ -251,8 +251,8 @@ if __name__ == "__main__":
         model.eval()
 
         # Warm-up (important!)
-        with torch.no_grad():
-            _ = model.sample((args.batch_size, D))
+        # with torch.no_grad():
+        #     _ = model.sample((args.batch_size, D))
 
         start = time.time()
 
@@ -270,16 +270,19 @@ if __name__ == "__main__":
         samples = samples /2 + 0.5
 
         # Plot MNIST samples
-        fig, ax = plt.subplots(1,4, figsize=(7,5))
+        num_samples = 6
+        fig, ax = plt.subplots(1, num_samples, figsize=(num_samples*1.5, 1.5))  # adjust width per image
 
-        for i in range(4):
+        for i in range(num_samples):
             img = samples[i].view(28, 28)   # reshape
             ax[i].imshow(img, cmap='gray')
             ax[i].axis('off')
 
-        plt.tight_layout()
-        
-        plt.savefig(args.samples)
+        # Remove extra padding around subplots
+        plt.subplots_adjust(left=0, right=1, top=1, bottom=0, wspace=0.05, hspace=0.05)
+
+        # Save figure tightly
+        plt.savefig(args.samples, bbox_inches='tight', pad_inches=0)
         plt.close()
         
         

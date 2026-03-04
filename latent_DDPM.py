@@ -64,15 +64,9 @@ class Beta_VAE(nn.Module):
 
         q = self.encoder(x)
         z = q.rsample()
-
-        if self.prior_type == 'gaussian':
-            elbo = torch.mean(self.decoder(z).log_prob(x) - self.beta * td.kl_divergence(q, self.prior()), dim=0)
-        elif self.prior_type in ['mog', 'flow']:
-            # KL divergence is not analytically tractable for MoG and Flow priors,
-            # so we use a Monte Carlo estimate.
-            log_p_z = self.prior.log_prob(z)
-            log_q_z = q.log_prob(z)
-            elbo = torch.mean(self.decoder(z).log_prob(x) + log_p_z - log_q_z, dim=0)
+        
+        elbo = torch.mean(self.decoder(z).log_prob(x) - self.beta * td.kl_divergence(q, self.prior()), dim=0)
+        
         return elbo
 
     def sample(self, n_samples=1):
@@ -100,7 +94,7 @@ class Beta_VAE(nn.Module):
 def train(vae, ddpm, optimizer_vae, optimizer_ddpm, data_loader, 
           vae_epochs, ddpm_epochs, device):
     
-    # ===== Stage 1: Train VAE =====
+    #Train beta-VAE
     vae.train()
     for epoch in range(vae_epochs):
         for batch in tqdm(data_loader, desc=f"VAE Epoch {epoch+1}/{vae_epochs}"):
@@ -115,7 +109,7 @@ def train(vae, ddpm, optimizer_vae, optimizer_ddpm, data_loader,
     for p in vae.parameters():
         p.requires_grad = False
     
-    # ===== Stage 2: Train latent DDPM =====
+    #Train latent DDPM on latent space
     ddpm.train()
     for epoch in range(ddpm_epochs):
         for batch in tqdm(data_loader, desc=f"DDPM Epoch {epoch+1}/{ddpm_epochs}"):
@@ -275,14 +269,17 @@ if __name__ == "__main__":
         
 
         # Plot MNIST samples
-        fig, ax = plt.subplots(1,4, figsize=(7,5))
+        num_samples = 6
+        fig, ax = plt.subplots(1, num_samples, figsize=(num_samples*1.5, 1.5))  # adjust width per image
 
-        for i in range(4):
+        for i in range(num_samples):
             img = samples[i].view(28, 28)   # reshape
             ax[i].imshow(img, cmap='gray')
             ax[i].axis('off')
 
-        plt.tight_layout()
-        
-        plt.savefig(args.samples)
+        # Remove extra padding around subplots
+        plt.subplots_adjust(left=0, right=1, top=1, bottom=0, wspace=0.05, hspace=0.05)
+
+        # Save figure tightly
+        plt.savefig(args.samples, bbox_inches='tight', pad_inches=0)
         plt.close()
