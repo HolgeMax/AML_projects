@@ -7,6 +7,7 @@ import torch.distributions as td
 import torch.nn.functional as F
 from tqdm import tqdm
 from unet import Unet
+from fid import compute_fid
 
 
 class DDPM(nn.Module):
@@ -103,7 +104,7 @@ class DDPM(nn.Module):
         return self.negative_elbo(x).mean()
 
 
-def train(model, optimizer, data_loader, epochs, device):
+def train(vae, ddpm, optimizer, data_loader, epochs, device):
     """
     Train a Flow model.
 
@@ -174,7 +175,8 @@ if __name__ == "__main__":
     import torch.utils.data
     from torchvision import datasets, transforms
     from torchvision.utils import save_image
-    import ToyData
+    import time
+    #import ToyData
 
     # Parse arguments
     import argparse
@@ -247,8 +249,22 @@ if __name__ == "__main__":
 
         # Generate samples
         model.eval()
+
+        # Warm-up (important!)
         with torch.no_grad():
-            samples = (model.sample((4,D))).cpu() 
+            _ = model.sample((args.batch_size, D))
+
+        start = time.time()
+
+        with torch.no_grad():
+            samples = (model.sample((args.batch_size,D))).cpu() 
+        end = time.time()
+
+        x_real = next(iter(train_loader))[0].view(args.batch_size, 1, 28, 28)
+        x_gen = samples.view(args.batch_size, 1, 28, 28)
+        fid = compute_fid(x_real, x_gen)
+        print('FID:', fid)
+        print(f"Sampling time: {end - start:.4f} seconds")
 
         # Transform the samples back to the original space
         samples = samples /2 + 0.5
