@@ -431,7 +431,7 @@ if __name__ == "__main__":
         print("Print mean test elbo:", mean_elbo)
 
     elif args.mode == "geodesics":
-        from partA import compute_geodesic
+        from partA import compute_geodesic, decode_geodesics
 
         model = VAE(
             GaussianPrior(M),
@@ -468,26 +468,53 @@ if __name__ == "__main__":
             mask = all_y == c
             ax.scatter(all_z[mask,0], all_z[mask,1],
                        s=5, alpha=0.4, color=colors[c], label=f'Class {c}')
-            
 
+        geodesics = []
         for (i, j) in pairs:
             z_start = all_z[i].to(device)
             z_end = all_z[j].to(device)
 
             geodesic = compute_geodesic(
-                model.decoder, 
+                model.decoder,
                 z_start,
                 z_end,
                 n_points=args.num_t,
                 device=device
             )
+            geodesics.append(geodesic)
 
             geo = geodesic.cpu().numpy()
 
             ax.plot(geo[:,0], geo[:,1], 'k-', linewidth=0.8, alpha=0.6)
+
+        # Plot latent space with pull-black geodesics
         ax.legend(); ax.set_xlabel('z₁'); ax.set_ylabel('z₂')
         ax.set_title('Latent space with pull-back geodesics')
         plt.tight_layout()
         plt.savefig(f'{args.experiment_folder}/geodesics_partA.png', dpi=150)
         plt.close()
         print(f"Saved → {args.experiment_folder}/geodesics_partA.png")
+
+        # Plot decoded image from geo
+        n_cols = 7  # 5 interior samples + 2 endpoints
+        fig2, axes = plt.subplots(n_curves, n_cols, figsize=(n_cols * 1.4, n_curves * 1.4))
+        if n_curves == 1:
+            axes = axes[None, :]  # ensure 2-D indexing
+
+        for row, geo_tensor in enumerate(geodesics):
+            decoded = decode_geodesics(geo_tensor, model.decoder, n_samples=5, device=device)
+            decoded = decoded.cpu()
+            for col in range(n_cols):
+                axes[row, col].imshow(decoded[col].squeeze(), cmap='gray', vmin=0, vmax=1)
+                axes[row, col].axis('off')
+                if row == 0:
+                    if col == 0:
+                        axes[row, col].set_title('start', fontsize=7)
+                    elif col == n_cols - 1:
+                        axes[row, col].set_title('end', fontsize=7)
+
+        fig2.suptitle('Decoded images along geodesics', fontsize=10)
+        plt.tight_layout()
+        plt.savefig(f'{args.experiment_folder}/geodesics_decoded_partA.png', dpi=150)
+        plt.close()
+        print(f"Saved → {args.experiment_folder}/geodesics_decoded_partA.png")
