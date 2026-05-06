@@ -260,8 +260,8 @@ if __name__ == "__main__":
             samples = (model.sample((args.batch_size,D))).cpu() 
         end = time.time()
 
-        x_real = next(iter(train_loader))[0].view(args.batch_size, 1, 28, 28)
-        x_gen = samples.view(args.batch_size, 1, 28, 28)
+        x_real = next(iter(train_loader))[0].view(args.batch_size, 1, 28, 28)/2 + 0.5
+        x_gen = samples.view(args.batch_size, 1, 28, 28)/2 + 0.5
         fid = compute_fid(x_real, x_gen)
         print('FID:', fid)
         print(f"Sampling time: {end - start:.4f} seconds")

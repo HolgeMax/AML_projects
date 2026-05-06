@@ -255,11 +255,11 @@ if __name__ == "__main__":
         end = time.time()
             
         samples = samples.mean
-        samples = samples.view(args.batch_size, 1, 28, 28)
+        samples = samples.view(args.batch_size, 1, 28, 28).float()
         # Compute FID
-        x_real = next(iter(train_loader))[0].view(args.batch_size, 1, 28, 28)
-        x_gen = samples
-        fid = compute_fid(x_real, x_gen)
+        x_real = next(iter(train_loader))[0].view(args.batch_size, 1, 28, 28).float() / 2 + 0.5
+        x_gen = samples /2 + 0.5
+        fid = compute_fid(x_real, x_gen, device=args.device)
         print('FID:', fid)
         print(f"Sampling time: {end - start:.4f} seconds")
 
